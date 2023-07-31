@@ -1,0 +1,40 @@
+---
+title: "SQLpractice"
+output: html_document
+date: "2023-07-30"
+---
+
+```{r}
+suppressMessages(library("DBI"))
+
+#Create SQLite database and write table.
+posts0 <- read.csv("posts.csv")
+db <- dbConnect(RSQLite::SQLite(), "fb-posts.sqlite")
+dbWriteTable(db, "posts", posts0, overwrite = TRUE)
+
+#Write Query
+dbGetQuery(db, 
+"SELECT posts.screen_name, CAST(posts.comments_count AS REAL)/CAST(posts.likes_count AS REAL)/
+(
+SELECT NorName.normaliser_based_on_even_months 
+FROM (
+  SELECT screen_name, MAX(CAST(comments_count AS REAL)/likes_count) - MIN(CAST(comments_count AS REAL)/likes_count) AS normaliser_based_on_even_months 
+           FROM posts 
+           WHERE likes_count != 0
+           AND date LIKE '____-02-__' 
+           OR date LIKE '____-04-__' 
+           OR date LIKE '____-06-__' 
+           OR date LIKE '____-08-__'
+           OR date LIKE '____-10-__'
+           OR date LIKE '____-12-__'
+           GROUP BY screen_name
+           HAVING normaliser_based_on_even_months != 0
+) AS NorName
+WHERE posts.screen_name == NorName.screen_name
+) AS normalised_clr
+           FROM posts
+           WHERE normalised_clr > 0
+           ORDER BY normalised_clr
+           LIMIT 10")
+```
+
